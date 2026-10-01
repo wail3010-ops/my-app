@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>WTV Smart TV & Web Player v2.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --red: #E50914;
+            --dark-bg: #0B0B0B;
+            --surface: #181818;
+            --surface-card: #222222;
+            --gold: #FFC107;
+            --text: #FFFFFF;
+            --gray: #AAAAAA;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(11, 11, 11, 0.98);
+            z-index: 10;
+        }
+
+        .hidden { display: none !important; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 28px;
+            width: 90%;
+            max-width: 540px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.85);
+            border: 1px solid #333;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--red);
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            margin: 14px 0;
+            text-align: right;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--gray);
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #111;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            direction: ltr;
+        }
+
+        input:focus, .focusable:focus {
+            border-color: var(--gold) !important;
+            background: #1e1e1e !important;
+            box-shadow: 0 0 12px rgba(255, 193, 7, 0.5) !important;
+            outline: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--red);
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        .btn:hover, .btn.focused {
+            background: #ff1e27;
+            transform: scale(1.02);
+            outline: 2px solid var(--gold);
+        }
+
+        .btn-logout {
+            background: #332222;
+            color: #ff6b6b;
+            border: 1px solid #552222;
+        }
+
+        .btn-logout:hover {
+            background: #551111;
+            color: #fff;
+        }
+
+        .emergency-reset-bar {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 9999;
+        }
+
+        .emergency-reset-btn {
+            background: rgba(229, 9, 20, 0.9);
+            color: #ffffff;
+            border: 1px solid #ff4d4d;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .emergency-reset-btn:hover {
+            background: #ff1e27;
+            transform: scale(1.05);
+        }
+
+        #home-portal {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 960px;
+            padding: 16px;
+        }
+
+        .portal-card {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 30px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+
+        .portal-card:hover, .portal-card.focused {
+            border-color: var(--gold);
+            background: var(--red);
+            transform: translateY(-8px) scale(1.04);
+            box-shadow: 0 12px 32px rgba(229, 9, 20, 0.5);
+        }
+
+        .portal-icon {
+            font-size: 52px;
+            margin-bottom: 14px;
+        }
+
+        .portal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .portal-sub {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        #app-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #sidebar {
+            width: 80px;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 16px;
+            border-left: 1px solid #222;
+            z-index: 10;
+        }
+
+        .nav-item {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 14px;
+            cursor: pointer;
+            color: var(--gray);
+            transition: 0.2s;
+            font-size: 18px;
+        }
+
+        .nav-item.active, .nav-item.focused, .nav-item:hover {
+            background: var(--red);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(229, 9, 20, 0.6);
+        }
+
+        .nav-label {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        #content {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+            position: relative;
+            background: var(--dark-bg);
+            z-index: 5;
+        }
+
+        .cw-row {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+
+        .cw-card {
+            min-width: 130px;
+            max-width: 130px;
+            background: var(--surface-card);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .cw-card:hover, .cw-card.focused {
+            outline: 3px solid var(--gold);
+            transform: scale(1.04);
+        }
+
+        .cw-poster {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+        }
+
+        .cw-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #333;
+        }
+
+        .cw-bar-fill {
+            height: 100%;
+            background: var(--red);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+            gap: 16px;
+            padding-bottom: 40px;
+        }
+
+        .poster-card {
+            background: var(--surface-card);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+            aspect-ratio: 2/3;
+        }
+
+        .poster-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .poster-card.focused, .poster-card:hover {
+            outline: 3px solid var(--gold);
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        .poster-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #live-drawer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            border-left: 1px solid #333;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+
+        .channel-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+
+        .channel-item.focused, .channel-item:hover {
+            background: var(--red);
+            outline: 2px solid var(--gold);
+        }
+
+        .channel-name {
+            flex: 1;
+            margin-right: 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .channel-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #222;
+            object-fit: contain;
+        }
+
+        #video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+        }
+
+        #video-container.hidden {
+            display: none !important;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .channel-title-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 110;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            border-right: 4px solid var(--red);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 110;
+            background: rgba(229, 9, 20, 0.9);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .close-btn:hover {
+            background: #ff1e27;
+            transform: scale(1.05);
+        }
+
+        .modal-details {
+            display: flex;
+            gap: 20px;
+            text-align: right;
+            align-items: flex-start;
+        }
+
+        .modal-poster {
+            width: 150px;
+            aspect-ratio: 2/3;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid #444;
+        }
+
+        .modal-info {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="emergency-reset-bar">
+        <button class="emergency-reset-btn focusable" tabindex="0" onclick="forceEmergencyReset()">🧹 مسح الكاش وتسجيل الخروج</button>
+    </div>
+
+    <!-- 1. شاشة دخول وإعدادات بيانات IPTV Xtream المباشرة المبسطة -->
+    <div id="login-screen" class="screen">
+        <div class="card">
+            <div class="logo">WTV Smart Player</div>
+            <p style="font-size: 13px; color: var(--gray); margin-bottom: 18px;">أدخل بيانات سيرفر IPTV (Xtream) للبدء بالمشاهدة المباشرة:</p>
+
+            <div class="input-group">
+                <label for="host-input">عنوان السيرفر / الهوست (Server URL):</label>
+                <input type="text" id="host-input" class="focusable" tabindex="0" placeholder="مثال: http://host.com:8080">
+            </div>
+
+            <div class="input-group">
+                <label for="user-input">اسم المستخدم (Username):</label>
+                <input type="text" id="user-input" class="focusable" tabindex="0" placeholder="اسم المستخدم الخاص باشتراكك">
+            </div>
+
+            <div class="input-group">
+                <label for="pass-input">كلمة المرور (Password):</label>
+                <input type="password" id="pass-input" class="focusable" tabindex="0" placeholder="كلمة المرور الخاصة باشتراكك">
+            </div>
+
+            <button class="btn focusable" tabindex="0" onclick="handleLogin()">🚀 حفظ والاتصال بالسيرفر الآن</button>
+            <button class="btn btn-logout focusable" tabindex="0" style="margin-top: 10px;" onclick="logoutAndClearCredentials()">🚪 تسجيل الخروج ومسح البيانات المحفوظة</button>
+            <div id="login-error" class="error-msg hidden">الرجاء تعبئة كافة حقول السيرفر بالكامل</div>
+        </div>
+    </div>
+
+    <!-- 2. الصفحة الرئيسية الشاملة (Portal Home Screen) -->
+    <div id="portal-screen" class="screen hidden">
+        <div class="logo" style="margin-bottom: 6px;">WTV Smart Player</div>
+        <p id="portal-account-info" style="font-size:12px; color:var(--gold); margin-bottom: 20px;">السيرفر الحالي: ...</p>
+
+        <div id="home-portal">
+            <div class="portal-card focusable" tabindex="0" onclick="enterSection('live')">
+                <div class="portal-icon">📺</div>
+                <div class="portal-title">البث المباشر</div>
+                <div class="portal-sub">جميع القنوات المباشرة والرياضية</div>
+            </div>
+
+            <div class="portal-card focusable" tabindex="0" onclick="enterSection('movies')">
+                <div class="portal-icon">🎬</div>
+                <div class="portal-title">مكتبة الأفلام</div>
+                <div class="portal-sub">أحدث الأفلام العربية والأجنبية</div>
+            </div>
+
+            <div class="portal-card focusable" tabindex="0" onclick="enterSection('series')">
+                <div class="portal-icon">🍿</div>
+                <div class="portal-title">المسلسلات والبرامج</div>
+                <div class="portal-sub">أحدث المسلسلات والمواسم</div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: center;">
+            <button class="btn focusable" tabindex="0" style="width: auto; padding: 10px 24px; background: #333;" onclick="openCredentials()">⚙️ تعديل بيانات السيرفر</button>
+            <button class="btn btn-logout focusable" tabindex="0" style="width: auto; padding: 10px 24px;" onclick="logoutAndClearCredentials()">🚪 تسجيل الخروج / تغيير الحساب</button>
+        </div>
+    </div>
+
+    <!-- 3. المشغل الداخلي والشبكة الرئيسية -->
+    <div id="app-layout" class="hidden">
+        <div id="video-container" class="hidden">
+            <div id="channel-title-overlay" class="channel-title-overlay hidden">🔴 بث مباشر</div>
+            <button id="close-video-btn" class="close-btn focusable" tabindex="0" onclick="closeVideoPlayer()">✕ إغلاق الفيديو والرجوع</button>
+            <video id="player" controls crossorigin></video>
+        </div>
+
+        <div id="sidebar">
+            <div id="tab-home" class="nav-item active focusable" tabindex="0" onclick="goHomePortal()">
+                🏠<span class="nav-label">الرئيسية</span>
+            </div>
+            <div id="tab-live" class="nav-item focusable" tabindex="0" onclick="enterSection('live')">
+                📺<span class="nav-label">مباشر</span>
+            </div>
+            <div id="tab-movies" class="nav-item focusable" tabindex="0" onclick="enterSection('movies')">
+                🎬<span class="nav-label">أفلام</span>
+            </div>
+            <div id="tab-series" class="nav-item focusable" tabindex="0" onclick="enterSection('series')">
+                🍿<span class="nav-label">مسلسلات</span>
+            </div>
+            <div id="tab-fav" class="nav-item focusable" tabindex="0" onclick="enterSection('favorites')">
+                ❤️<span class="nav-label">قائمتي</span>
+            </div>
+            <div id="tab-refresh" class="nav-item focusable" tabindex="0" onclick="refreshCurrentSection()">
+                🔄<span class="nav-label">تحديث</span>
+            </div>
+            <div id="tab-settings" class="nav-item focusable" tabindex="0" onclick="openCredentials()">
+                ⚙️<span class="nav-label">السيرفر</span>
+            </div>
+            <div id="tab-logout" class="nav-item focusable" tabindex="0" style="margin-top: auto; color: #ff6b6b;" onclick="logoutAndClearCredentials()">
+                🚪<span class="nav-label">خروج</span>
+            </div>
+        </div>
+
+        <div id="content">
+            <!-- شريط آخر ما تم مشاهدته (Continue Watching Row) -->
+            <div id="cw-section" class="hidden">
+                <h3 style="color: var(--gold); margin-bottom: 10px; font-size: 16px;">🍿 آخر ما تم مشاهدته:</h3>
+                <div id="cw-row" class="cw-row"></div>
+            </div>
+
+            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+                <h2 id="section-title" style="color: var(--gold); margin-left: auto;">البث المباشر والقنوات</h2>
+                <button class="btn focusable" tabindex="0" style="width: auto; padding: 8px 16px; margin: 0; background: #222; font-size: 12px;" onclick="refreshCurrentSection()">🔄 تحديث المحتوى</button>
+                <input type="text" id="search-input" class="focusable" tabindex="0" aria-label="البحث" placeholder="🔍 ابحث عن قناة، فيلم، أو مسلسل..." oninput="handleSearch(this.value)" style="width: 260px; padding: 10px; font-size: 13px;">
+            </div>
+
+            <div id="categories-bar" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; white-space: nowrap;"></div>
+            <div id="grid-container" class="grid"></div>
+        </div>
+
+        <!-- قائمة القنوات المباشرة مع زر خروج مخصص صريح -->
+        <div id="live-drawer" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="color: var(--gold); margin:0;">قنوات البث المباشر</h3>
+                <button class="btn focusable" tabindex="0" style="width:auto; padding:6px 14px; margin:0; background:#333; font-size:12px;" onclick="document.getElementById('live-drawer').classList.add('hidden')">✕ إغلاق القنوات</button>
+            </div>
+            <div id="channel-list" style="overflow-y: auto; flex: 1;"></div>
+        </div>
+    </div>
+
+    <!-- 4. شاشة التفاصيل الفاخرة Modal Dialog -->
+    <div id="details-modal" class="screen hidden" onclick="if(event.target===this) closeDetailsModal();">
+        <div class="card" style="max-width: 650px;" onclick="event.stopPropagation();">
+            <div id="details-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let hlsPlayer = null;
+        let currentItems = [];
+        let currentCategories = [];
+        let selectedCategory = null;
+        let searchQuery = "";
+        let activeTabName = "live";
+        let activePlayingMedia = null;
+
+        function forceEmergencyReset() {
+            if (confirm("هل أنت تأكدت من رغبتك في مسح الكاش وتسجيل الخروج؟")) {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = window.location.pathname + '?reset=' + Date.now();
+            }
+        }
+
+        function cleanHostUrl(raw) {
+            if (!raw) return "";
+            let h = raw.trim().replace(/\/+$/, "");
+            if (!h.startsWith("http://") && !h.startsWith("https://")) {
+                h = "http://" + h;
+            }
+            return h;
+        }
+
+        function ensureArray(data) {
+            if (!data) return [];
+            if (Array.isArray(data)) return data;
+            if (typeof data === 'object') {
+                if (data.series && Array.isArray(data.series)) return data.series;
+                if (data.data && Array.isArray(data.data)) return data.data;
+                if (data.channels && Array.isArray(data.channels)) return data.channels;
+                return Object.values(data).filter(it => it && typeof it === 'object');
+            }
+            return [];
+        }
+
+        /** محرك سباق متوازي خارق مع بروكسي مخصص عالي الثبات */
+        async function fetchXtreamApi(url) {
+            const fetchSingleProxy = async (targetUrl, isAllOrigins) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 25000); // 20-25s for large playlists
+
+                try {
+                    const res = await fetch(targetUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+
+                    if (isAllOrigins) {
+                        const data = await res.json();
+                        if (data && data.contents) {
+                            try {
+                                const parsed = JSON.parse(data.contents);
+                                if (parsed) return parsed;
+                            } catch (e) {
+                                if (data.contents && data.contents.length > 5) return data.contents;
+                            }
+                        }
+                    } else {
+                        const text = await res.text();
+                        if (text && text.trim().length > 0) {
+                            try {
+                                const parsed = JSON.parse(text);
+                                if (parsed) return parsed;
+                            } catch (e) { }
+                        }
+                    }
+                } catch (e) {
+                    clearTimeout(timeoutId);
+                    throw e;
+                }
+                throw new Error("Invalid format");
+            };
+
+            const proxyFetchers = [
+                fetchSingleProxy(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true),
+                fetchSingleProxy(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, false),
+                fetchSingleProxy(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, false),
+                fetchSingleProxy(`https://corsproxy.io/?${encodeURIComponent(url)}`, false),
+                fetchSingleProxy(url, false)
+            ];
+
+            if (Promise.any) {
+                try {
+                    return await Promise.any(proxyFetchers);
+                } catch (e) { }
+            }
+
+            for (const p of proxyFetchers) {
+                try { return await p; } catch(e){}
+            }
+
+            throw new Error("Unable to fetch IPTV data from server");
+        }
+
+        /* ---------------- المفضلة وحفظ متابعة المشاهدة ---------------- */
+        function getFavorites() {
+            return JSON.parse(localStorage.getItem("wtv_favorites") || "[]");
+        }
+
+        function isFavorite(id) {
+            return getFavorites().some(it => it.id == id);
+        }
+
+        function toggleFavorite(item, type) {
+            let favs = getFavorites();
+            if (isFavorite(item.stream_id || item.series_id || item.id)) {
+                favs = favs.filter(it => (it.id) != (item.stream_id || item.series_id || item.id));
+                alert("تمت الإزالة من قائمتي ❤️");
+            } else {
+                favs.unshift({
+                    id: item.stream_id || item.series_id || item.id,
+                    name: item.name || item.title,
+                    poster: item.stream_icon || item.cover,
+                    type: type
+                });
+                alert("تمت الإضافة إلى قائمتي ❤️");
+            }
+            localStorage.setItem("wtv_favorites", JSON.stringify(favs));
+            if (activeTabName === 'favorites') enterSection('favorites');
+        }
+
+        function getContinueWatching() {
+            return JSON.parse(localStorage.getItem("wtv_cw") || "[]");
+        }
+
+        /* استبعاد القنوات المباشرة تماماً من متابعة المشاهدة وحفظ الأفلام والمسلسلات فقط */
+        function saveProgress(media, posMs, durMs) {
+            if (!media || media.isLive || !durMs || posMs < 5000) return;
+            let cw = getContinueWatching().filter(it => it.id !== media.id);
+            cw.unshift({
+                id: media.id,
+                title: media.title,
+                poster: media.poster,
+                streamUrl: media.streamUrl,
+                posMs: posMs,
+                durMs: durMs,
+                updatedAt: Date.now()
+            });
+            if (cw.length > 15) cw.pop();
+            localStorage.setItem("wtv_cw", JSON.stringify(cw));
+            renderContinueWatchingRow();
+        }
+
+        function renderContinueWatchingRow() {
+            const cwList = getContinueWatching();
+            const section = document.getElementById("cw-section");
+            const row = document.getElementById("cw-row");
+
+            if (!cwList || cwList.length === 0) {
+                section.classList.add("hidden");
+                return;
+            }
+
+            section.classList.remove("hidden");
+            row.innerHTML = "";
+
+            cwList.forEach(item => {
+                const pct = ((item.posMs / item.durMs) * 100).toFixed(0);
+                const card = document.createElement("div");
+                card.className = "cw-card focusable";
+                card.tabIndex = 0;
+                card.innerHTML = `
+                    <img class="cw-poster" src="${item.poster || 'https://via.placeholder.com/130x195?text=WTV'}" onerror="this.src='https://via.placeholder.com/130x195?text=WTV'">
+                    <div class="cw-bar-container"><div class="cw-bar-fill" style="width:${pct}%"></div></div>
+                    <div style="padding:6px; font-size:11px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.title}</div>
+                `;
+                card.onclick = () => {
+                    playStream(item.streamUrl, item.posMs, { id: item.id, title: item.title, poster: item.poster, streamUrl: item.streamUrl, isLive: false }, true);
+                };
+                row.appendChild(card);
+            });
+        }
+
+        /* ---------------- الدخول وتفاصيل الحساب ---------------- */
+        function checkSavedCredentials() {
+            const host = localStorage.getItem("wtv_host");
+            const user = localStorage.getItem("wtv_user");
+            const pass = localStorage.getItem("wtv_pass");
+
+            if (host && user && pass) {
+                document.getElementById("host-input").value = host;
+                document.getElementById("user-input").value = user;
+                document.getElementById("pass-input").value = pass;
+
+                const portalInfo = document.getElementById("portal-account-info");
+                if (portalInfo) portalInfo.innerText = `السيرفر الحالي: ${host} | المستخدم: ${user}`;
+
+                document.getElementById("login-screen").classList.add("hidden");
+                goHomePortal();
+            } else {
+                document.getElementById("login-screen").classList.remove("hidden");
+            }
+        }
+
+        function logoutAndClearCredentials() {
+            if (confirm("هل أنت تأكدت من رغبتك في تسجيل الخروج ومسح بيانات السيرفر المحفوظة؟")) {
+                localStorage.clear();
+                sessionStorage.clear();
+
+                document.getElementById("host-input").value = "";
+                document.getElementById("user-input").value = "";
+                document.getElementById("pass-input").value = "";
+
+                closeVideoPlayer(true);
+                document.getElementById("app-layout").classList.add("hidden");
+                document.getElementById("portal-screen").classList.add("hidden");
+                document.getElementById("login-screen").classList.remove("hidden");
+            }
+        }
+
+        function handleLogin() {
+            const host = cleanHostUrl(document.getElementById("host-input").value);
+            const user = document.getElementById("user-input").value.trim();
+            const pass = document.getElementById("pass-input").value.trim();
+
+            if (host && user && pass) {
+                localStorage.setItem("wtv_host", host);
+                localStorage.setItem("wtv_user", user);
+                localStorage.setItem("wtv_pass", pass);
+
+                const portalInfo = document.getElementById("portal-account-info");
+                if (portalInfo) portalInfo.innerText = `السيرفر الحالي: ${host} | المستخدم: ${user}`;
+
+                document.getElementById("login-screen").classList.add("hidden");
+                goHomePortal();
+            } else {
+                document.getElementById("login-error").classList.remove("hidden");
+            }
+        }
+
+        function openCredentials() {
+            document.getElementById("host-input").value = localStorage.getItem("wtv_host") || "http://";
+            document.getElementById("user-input").value = localStorage.getItem("wtv_user") || "";
+            document.getElementById("pass-input").value = localStorage.getItem("wtv_pass") || "";
+            document.getElementById("login-screen").classList.remove("hidden");
+        }
+
+        function goHomePortal() {
+            closeVideoPlayer(true);
+            document.getElementById("app-layout").classList.add("hidden");
+            document.getElementById("portal-screen").classList.remove("hidden");
+            renderContinueWatchingRow();
+        }
+
+        function refreshCurrentSection() {
+            enterSection(activeTabName);
+        }
+
+        async function enterSection(tab) {
+            activeTabName = tab;
+            closeVideoPlayer(true);
+            document.getElementById("portal-screen").classList.add("hidden");
+            document.getElementById("app-layout").classList.remove("hidden");
+
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const activeNav = document.getElementById(`tab-${tab}`);
+            if (activeNav) activeNav.classList.add('active');
+
+            const host = cleanHostUrl(localStorage.getItem("wtv_host"));
+            const user = (localStorage.getItem("wtv_user") || "").trim();
+            const pass = (localStorage.getItem("wtv_pass") || "").trim();
+
+            const grid = document.getElementById("grid-container");
+            const catsBar = document.getElementById("categories-bar");
+            const drawer = document.getElementById("live-drawer");
+            catsBar.innerHTML = "";
+            selectedCategory = null;
+            searchQuery = "";
+            document.getElementById("search-input").value = "";
+
+            if (tab === 'favorites') {
+                document.getElementById("section-title").innerText = "❤️ قائمتي والمفضلة";
+                drawer.classList.add("hidden");
+                const favs = getFavorites();
+                grid.innerHTML = "";
+
+                if (!favs || favs.length === 0) {
+                    grid.innerHTML = "<div style='color:var(--gray); padding:20px;'>لا توجد عناصر مضافة لقائمتك بعد</div>";
+                    return;
+                }
+
+                favs.forEach(item => {
+                    const card = document.createElement("div");
+                    card.className = "poster-card focusable";
+                    card.tabIndex = 0;
+                    card.innerHTML = `
+                        <img src="${item.poster || 'https://via.placeholder.com/150x225?text=WTV'}" onerror="this.src='https://via.placeholder.com/150x225?text=WTV'">
+                        <div class="poster-title">${item.name}</div>
+                    `;
+                    card.onclick = () => {
+                        if (item.type === 'movie') {
+                            const movieUrl = `${host}/movie/${user}/${pass}/${item.id}.mp4`;
+                            playStream(movieUrl, 0, { id: 'movie_' + item.id, title: item.name, poster: item.poster, streamUrl: movieUrl, isLive: false }, true);
+                        } else if (item.type === 'series') {
+                            fetchSeriesEpisodes(item.id, item.name, host, user, pass);
+                        } else {
+                            const streamUrl = `${host}/live/${user}/${pass}/${item.id}.m3u8`;
+                            playStream(streamUrl, 0, { id: item.id, title: item.name, poster: item.poster, streamUrl: streamUrl, isLive: true }, true);
+                        }
+                    };
+                    grid.appendChild(card);
+                });
+                return;
+            }
+
+            if (!host || !user || !pass) { openCredentials(); return; }
+
+            grid.innerHTML = "<div style='color:var(--gray); padding:20px;'>جاري جلب المحتوى والتحميل الفوري...</div>";
+
+            if (tab === 'live') {
+                document.getElementById("section-title").innerText = "البث المباشر والقنوات";
+                drawer.classList.remove("hidden");
+                try {
+                    const catUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_live_categories`;
+                    const streamUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+
+                    let cats = [];
+                    let streams = [];
+                    try { cats = await fetchXtreamApi(catUrl); } catch(e){ cats = []; }
+                    streams = await fetchXtreamApi(streamUrl);
+
+                    currentCategories = ensureArray(cats);
+                    currentItems = ensureArray(streams);
+
+                    renderCategoriesBar(currentCategories, 'live');
+                    filterAndRender('live', host, user, pass);
+                } catch (e) {
+                    renderErrorCard(grid, "تعذّر جلب القنوات المباشرة", host, user);
+                }
+            } else if (tab === 'movies') {
+                document.getElementById("section-title").innerText = "مكتبة الأفلام الموصى بها";
+                drawer.classList.add("hidden");
+                try {
+                    const catUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_vod_categories`;
+                    const streamUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_vod_streams`;
+
+                    let cats = [];
+                    let streams = [];
+                    try { cats = await fetchXtreamApi(catUrl); } catch(e){ cats = []; }
+                    streams = await fetchXtreamApi(streamUrl);
+
+                    currentCategories = ensureArray(cats);
+                    currentItems = ensureArray(streams);
+
+                    if (currentCategories.length > 0) {
+                        selectedCategory = currentCategories[0].category_id;
+                    }
+
+                    renderCategoriesBar(currentCategories, 'movies');
+                    filterAndRender('movies', host, user, pass);
+                } catch (e) {
+                    renderErrorCard(grid, "تعذّر جلب قائمة الأفلام", host, user);
+                }
+            } else if (tab === 'series') {
+                document.getElementById("section-title").innerText = "المسلسلات الموصى بها";
+                drawer.classList.add("hidden");
+                try {
+                    const catUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_series_categories`;
+                    const streamUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_series`;
+
+                    let cats = [];
+                    let streams = [];
+                    try { cats = await fetchXtreamApi(catUrl); } catch(e){ cats = []; }
+                    streams = await fetchXtreamApi(streamUrl);
+
+                    currentCategories = ensureArray(cats);
+                    currentItems = ensureArray(streams);
+
+                    if (currentCategories.length > 0) {
+                        selectedCategory = currentCategories[0].category_id;
+                    }
+
+                    renderCategoriesBar(currentCategories, 'series');
+                    filterAndRender('series', host, user, pass);
+                } catch (e) {
+                    renderErrorCard(grid, "تعذّر جلب قائمة المسلسلات", host, user);
+                }
+            }
+        }
+
+        function renderErrorCard(container, title, host, user) {
+            container.innerHTML = `
+                <div class="card" style="margin:20px auto; max-width:540px; text-align:right;">
+                    <h3 style="color:var(--red); margin-bottom:12px;">⚠️ ${title}</h3>
+                    <p style="font-size:13px; color:var(--gray); margin-bottom:8px;">• قد تكون بيانات الحساب المحفوظة قديمة أو غير صحيحة.</p>
+
+                    <!-- حل مشكلة المتصفحات المحمولية والحظر: إرشادات صريحة لتجربة أصلية 100% -->
+                    <div style="background:#221818; border:1px solid #552222; padding:12px; border-radius:8px; margin:12px 0;">
+                        <p style="font-size:12px; color:#ff8888; font-weight:bold; margin-bottom:4px;">📱 للتجربة الفائقة والسرعة بدون أي حظر متصفحات:</p>
+                        <p style="font-size:11px; color:#ddd; margin:0;">ننصحك بتثبيت تطبيق أندرويد المباشر (APK) حيث يعمل بدون وسائط وبث مباشر بنسبة 100% ثابت.</p>
+                    </div>
+
+                    <div style="background:#111; padding:10px; border-radius:8px; margin:12px 0; font-size:12px; color:var(--gold); direction:ltr; text-align:left;">
+                        Host: ${host}<br>User: ${user}
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:14px;">
+                        <button class="btn focusable" tabindex="0" style="background:#333; flex:1;" onclick="openCredentials()">✏️ تعديل بيانات السيرفر</button>
+                        <button class="btn btn-logout focusable" tabindex="0" style="flex:1;" onclick="logoutAndClearCredentials()">🚪 تسجيل الخروج وحذف الحساب</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCategoriesBar(categories, tab) {
+            const bar = document.getElementById("categories-bar");
+            bar.innerHTML = "";
+
+            const allChip = document.createElement("button");
+            allChip.className = "btn focusable";
+            allChip.tabIndex = 0;
+            allChip.style.cssText = `width:auto; padding:8px 16px; font-size:12px; margin:0; background:${selectedCategory === null ? 'var(--red)' : '#222'}; border-radius:20px;`;
+            allChip.innerText = "أهم الأعمال";
+            allChip.onclick = (e) => {
+                e.stopPropagation();
+                selectedCategory = null;
+                const host = localStorage.getItem("wtv_host");
+                const user = localStorage.getItem("wtv_user");
+                const pass = localStorage.getItem("wtv_pass");
+                renderCategoriesBar(categories, tab);
+                filterAndRender(tab, host, user, pass);
+            };
+            bar.appendChild(allChip);
+
+            if (categories && Array.isArray(categories)) {
+                categories.forEach(cat => {
+                    const chip = document.createElement("button");
+                    chip.className = "btn focusable";
+                    chip.tabIndex = 0;
+                    const isSel = selectedCategory == cat.category_id;
+                    chip.style.cssText = `width:auto; padding:8px 16px; font-size:12px; margin:0; background:${isSel ? 'var(--red)' : '#222'}; border-radius:20px;`;
+                    chip.innerText = cat.category_name || cat.name;
+                    chip.onclick = (e) => {
+                        e.stopPropagation();
+                        selectedCategory = cat.category_id;
+                        const host = localStorage.getItem("wtv_host");
+                        const user = localStorage.getItem("wtv_user");
+                        const pass = localStorage.getItem("wtv_pass");
+                        renderCategoriesBar(categories, tab);
+                        filterAndRender(tab, host, user, pass);
+                    };
+                    bar.appendChild(chip);
+                });
+            }
+        }
+
+        function handleSearch(query) {
+            searchQuery = query.trim().toLowerCase();
+            const host = localStorage.getItem("wtv_host");
+            const user = localStorage.getItem("wtv_user");
+            const pass = localStorage.getItem("wtv_pass");
+            filterAndRender(activeTabName, host, user, pass);
+        }
+
+        function filterAndRender(tab, host, user, pass) {
+            let filtered = currentItems;
+            if (selectedCategory !== null) {
+                filtered = filtered.filter(it => (it.category_id || it.categoryId) == selectedCategory);
+            } else if (searchQuery === "") {
+                filtered = filtered.slice(0, 30);
+            }
+
+            if (searchQuery !== "") {
+                filtered = currentItems.filter(it => (it.name || it.title || "").toLowerCase().includes(searchQuery));
+            }
+
+            if (tab === 'live') {
+                renderLiveChannels(filtered, host, user, pass);
+            } else if (tab === 'movies') {
+                renderVodGrid(filtered, 'movie', host, user, pass);
+            } else if (tab === 'series') {
+                renderVodGrid(filtered, 'series', host, user, pass);
+            }
+        }
+
+        function renderLiveChannels(channels, host, user, pass) {
+            const list = document.getElementById("channel-list");
+            list.innerHTML = "";
+            channels.forEach(ch => {
+                const item = document.createElement("div");
+                item.className = "channel-item focusable";
+                item.tabIndex = 0;
+                item.innerHTML = `
+                    <span class="channel-name">${ch.name}</span>
+                    <img class="channel-logo" src="${ch.stream_icon || ''}" onerror="this.style.display='none'">
+                `;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    const streamUrl = `${host}/live/${user}/${pass}/${ch.stream_id}.m3u8`;
+                    playStream(streamUrl, 0, { id: ch.stream_id, title: ch.name, poster: ch.stream_icon, streamUrl: streamUrl, isLive: true }, true);
+                };
+                list.appendChild(item);
+            });
+        }
+
+        function renderVodGrid(items, type, host, user, pass) {
+            const grid = document.getElementById("grid-container");
+            grid.innerHTML = "";
+
+            if (!items || items.length === 0) {
+                grid.innerHTML = "<div style='color:var(--gray); padding:20px;'>لا توجد عناصر متاحة في هذه الباقة أو لهذا البحث</div>";
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "poster-card focusable";
+                card.tabIndex = 0;
+                const posterUrl = item.stream_icon || item.cover || 'https://via.placeholder.com/150x225?text=WTV';
+                card.innerHTML = `
+                    <img src="${posterUrl}" onerror="this.src='https://via.placeholder.com/150x225?text=WTV'">
+                    <div class="poster-title">${item.name}</div>
+                `;
+
+                card.onclick = () => {
+                    if (type === 'movie') {
+                        showMovieDetailsModal(item, host, user, pass);
+                    } else if (type === 'series') {
+                        showSeriesDetailsModal(item, host, user, pass);
+                    }
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        /* ---------------- نافذة تفاصيل الفيلم الفاخرة (Movie Details Modal) ---------------- */
+        async function showMovieDetailsModal(item, host, user, pass) {
+            const ext = item.container_extension || 'mp4';
+            const movieUrl = `${host}/movie/${user}/${pass}/${item.stream_id}.${ext}`;
+            const posterUrl = item.stream_icon || item.cover || 'https://via.placeholder.com/150x225?text=WTV';
+
+            const modal = document.getElementById("details-modal");
+            const content = document.getElementById("details-content");
+
+            content.innerHTML = `
+                <div class="modal-details">
+                    <img class="modal-poster" src="${posterUrl}">
+                    <div class="modal-info">
+                        <h2 style="color:var(--gold); margin-bottom:8px;">${item.name}</h2>
+                        <p style="font-size:12px; color:var(--gray); margin-bottom:12px;">⭐ تقييم: ${item.rating || '8.5'} | 🎬 ${item.genre || 'أفلام سينمائية'}</p>
+                        <p style="font-size:13px; color:#ddd; line-height:1.6; margin-bottom:20px;">${item.plot || 'قصة الفيلم وتفاصيل العرض المشوقة على منصة WTV Smart TV.'}</p>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn focusable" tabindex="0" style="flex:1;" onclick="closeDetailsModal(); playStream('${movieUrl}', 0, {id:'movie_${item.stream_id}', title:'${item.name}', poster:'${posterUrl}', streamUrl:'${movieUrl}', isLive:false}, true)">▶️ تشغيل الفيلم</button>
+                            <button class="btn focusable" tabindex="0" style="background:#333; flex:1;" onclick="toggleFavorite({stream_id:'${item.stream_id}', name:'${item.name}', stream_icon:'${posterUrl}'}, 'movie')">❤️ مفضلة</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn focusable" tabindex="0" style="margin-top:20px; background:#444;" onclick="closeDetailsModal()">إغلاق</button>
+            `;
+            modal.classList.remove("hidden");
+        }
+
+        /* ---------------- نافذة تفاصيل المسلسل الفاخرة (Series Details Modal) ---------------- */
+        async function showSeriesDetailsModal(item, host, user, pass) {
+            const seriesId = item.series_id || item.stream_id;
+            const posterUrl = item.cover || item.stream_icon || 'https://via.placeholder.com/150x225?text=WTV';
+            const modal = document.getElementById("details-modal");
+            const content = document.getElementById("details-content");
+
+            content.innerHTML = "<div style='color:var(--gray); padding:30px;'>جاري تحميل معلومات وحلقات المسلسل...</div>";
+            modal.classList.remove("hidden");
+
+            try {
+                const epUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_series_info&series_id=${seriesId}`;
+                const data = await fetchXtreamApi(epUrl);
+                const info = data ? data.info : {};
+                const episodes = data ? data.episodes : null;
+
+                let html = `
+                    <div class="modal-details">
+                        <img class="modal-poster" src="${posterUrl}">
+                        <div class="modal-info">
+                            <h2 style="color:var(--gold); margin-bottom:8px;">${item.name}</h2>
+                            <p style="font-size:12px; color:var(--gray); margin-bottom:10px;">⭐ تقييم: ${info.rating || '8.8'} | 🍿 ${info.genre || 'مسلسلات درامية'}</p>
+                            <p style="font-size:13px; color:#ddd; line-height:1.5; margin-bottom:14px;">${info.plot || 'وصف وقصة المسلسل المشوقة متوفرة بجميع الحلقات والمواسم.'}</p>
+                            <button class="btn focusable" tabindex="0" style="background:#333; width:auto; padding:8px 16px;" onclick="toggleFavorite({series_id:'${seriesId}', name:'${item.name}', cover:'${posterUrl}'}, 'series')">❤️ أضف لقائمتي</button>
+                        </div>
+                    </div>
+                    <hr style="border-color:#333; margin:16px 0;">
+                    <h3 style="color:var(--gold); margin-bottom:12px; text-align:right;">حلقات المسلسل:</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto;">
+                `;
+
+                if (episodes) {
+                    Object.keys(episodes).forEach(seasonNum => {
+                        html += `<div style="font-weight:bold; color:var(--red); text-align:right; margin-top:10px;">الموسم ${seasonNum}</div>`;
+                        episodes[seasonNum].forEach(ep => {
+                            const epExt = ep.container_extension || 'mp4';
+                            const streamEpUrl = `${host}/series/${user}/${pass}/${ep.id}.${epExt}`;
+                            html += `
+                                <button class="btn focusable" tabindex="0" style="background:#222; text-align:right; padding:12px; font-size:13px; margin:0;" onclick="closeDetailsModal(); playStream('${streamEpUrl}', 0, {id:'ep_${ep.id}', title:'${item.name} - حلقة ${ep.episode_num}', poster:'${posterUrl}', streamUrl:'${streamEpUrl}', isLive:false}, true)">
+                                    ▶️ الحلقة ${ep.episode_num} - ${ep.title || 'حلقة ' + ep.episode_num}
+                                </button>
+                            `;
+                        });
+                    });
+                } else {
+                    html += `<p style="color:var(--gray);">لا توجد حلقات متاحة لهذا المسلسل</p>`;
+                }
+
+                html += `
+                    </div>
+                    <button class="btn focusable" tabindex="0" style="margin-top: 16px; background:#444;" onclick="closeDetailsModal()">إغلاق</button>
+                `;
+
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = `
+                    <h3 style="color:var(--red);">تعذّر جلب حلقات المسلسل</h3>
+                    <button class="btn focusable" tabindex="0" style="margin-top:20px; background:#444;" onclick="closeDetailsModal()">إغلاق</button>
+                `;
+            }
+        }
+
+        function closeDetailsModal() {
+            document.getElementById("details-modal").classList.add("hidden");
+        }
+
+        /* ---------------- مشغّل الفيديو وتتبع الوقت الذكي باختيار أسرع عتاد ---------------- */
+        function playStream(streamUrl, startMs = 0, mediaInfo = null, directStart = false) {
+            const video = document.getElementById("player");
+            const videoContainer = document.getElementById("video-container");
+            const channelOverlay = document.getElementById("channel-title-overlay");
+
+            activePlayingMedia = mediaInfo;
+            videoContainer.classList.remove("hidden");
+
+            if (mediaInfo && mediaInfo.title) {
+                channelOverlay.innerText = `${mediaInfo.isLive ? '🔴 بث مباشر:' : '🎬'} ${mediaInfo.title}`;
+                channelOverlay.classList.remove("hidden");
+            } else {
+                channelOverlay.classList.add("hidden");
+            }
+
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+
+            const onVideoLoaded = () => {
+                if (startMs > 0 && video.duration) {
+                    video.currentTime = startMs / 1000;
+                }
+                video.play().catch(e => console.log("Play caught:", e));
+            };
+
+            if (Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('/live/'))) {
+                hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    maxBufferLength: 8,
+                    maxMaxBufferLength: 15,
+                    startFragPrefetch: true
+                });
+                hlsPlayer.loadSource(streamUrl);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, onVideoLoaded);
+            } else {
+                video.src = streamUrl;
+                video.load();
+                video.onloadedmetadata = onVideoLoaded;
+                video.play().catch(e => console.log("Direct play caught:", e));
+            }
+
+            // حفظ متابعة المشاهدة أوتوماتيكياً كل 5 ثوانٍ للأفلام والمسلسلات فقط
+            video.ontimeupdate = () => {
+                if (activePlayingMedia && !activePlayingMedia.isLive && video.duration > 30 && video.currentTime > 5) {
+                    saveProgress(activePlayingMedia, video.currentTime * 1000, video.duration * 1000);
+                }
+            };
+        }
+
+        /* رسالة تأكيد تحذيرية قبل الخروج من مشغّل الفيديو */
+        function closeVideoPlayer(force = false) {
+            const video = document.getElementById("player");
+            const videoContainer = document.getElementById("video-container");
+
+            if (videoContainer.classList.contains("hidden")) return;
+
+            if (!force && !confirm("هل أنت تأكدت من رغبتك في الخروج من المشغّل والرجوع؟")) {
+                return;
+            }
+
+            video.pause();
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            videoContainer.classList.add("hidden");
+        }
+
+        checkSavedCredentials();
+
+        /* ---------------- التحكم بالريموت بالكامل (D-Pad Keyboard Navigation) ---------------- */
+        document.addEventListener('keydown', function (e) {
+            const activeModal = document.getElementById("details-modal");
+            const isModalOpen = activeModal && !activeModal.classList.contains("hidden");
+
+            if (e.keyCode === 10009 || e.keyCode === 461 || e.keyCode === 27) { // Back
+                if (isModalOpen) closeDetailsModal();
+                else { closeVideoPlayer(); }
+                return;
+            }
+
+            // التنقل بأسهم الريموت (D-Pad Navigation)
+            const focusables = Array.from(document.querySelectorAll('.focusable, button, input, .nav-item, .portal-card, .poster-card, .cw-card'))
+                .filter(el => el.offsetParent !== null);
+
+            let currIndex = focusables.indexOf(document.activeElement);
+
+            if (e.key === "ArrowDown" || e.keyCode === 40) {
+                if (currIndex >= 0 && currIndex < focusables.length - 1) focusables[currIndex + 1].focus();
+                else if (focusables.length > 0) focusables[0].focus();
+            } else if (e.key === "ArrowUp" || e.keyCode === 38) {
+                if (currIndex > 0) focusables[currIndex - 1].focus();
+            } else if (e.key === "ArrowLeft" || e.keyCode === 37) {
+                if (currIndex >= 0 && currIndex < focusables.length - 1) focusables[currIndex + 1].focus();
+            } else if (e.key === "ArrowRight" || e.keyCode === 39) {
+                if (currIndex > 0) focusables[currIndex - 1].focus();
+            }
+        });
+    </script>
+</body>
+</html>
